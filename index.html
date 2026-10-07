@@ -269,7 +269,11 @@ async function pullFromCloud(){
     });
     if(!res.ok) throw new Error('fetch failed: ' + res.status);
     const rows = await res.json();
-    if(rows && rows.length>0){
+    const cloudEmpty = rows && rows.length>0 && !(rows[0].expenses && rows[0].expenses.length);
+    if(cloudEmpty && expenses.length>0){
+      // в облаке пусто, а на устройстве данные есть — не затираем их, а выгружаем в облако
+      await pushToCloud();
+    }else if(rows && rows.length>0){
       expenses = rows[0].expenses || [];
       settings = rows[0].settings || settings;
       if(!settings.categoryLimits) settings.categoryLimits = {};
