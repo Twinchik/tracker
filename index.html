@@ -1,0 +1,961 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Трекер трат</title>
+<style>
+  :root{
+    --bg:#f7f7f5;
+    --card:#ffffff;
+    --border:#e4e2dd;
+    --text:#1c1c1a;
+    --muted:#8a8880;
+    --accent:#378ADD;
+    --danger:#E24B4A;
+    --green:#639922;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    padding:24px 16px 60px;
+  }
+  .wrap{max-width:520px;margin:0 auto;}
+  h1{font-size:20px;font-weight:500;margin:0 0 20px;}
+  .card{background:var(--card);border:0.5px solid var(--border);border-radius:12px;padding:16px;margin-bottom:16px;}
+  .row{display:flex;gap:8px;margin-bottom:8px;}
+  input,select{
+    width:100%;height:38px;border:0.5px solid var(--border);border-radius:8px;
+    padding:0 10px;font-size:14px;background:var(--bg);color:var(--text);
+  }
+  input:focus,select:focus{outline:none;box-shadow:0 0 0 2px rgba(55,138,221,0.25);}
+  input[type=number]{-moz-appearance:textfield;appearance:textfield;}
+  input[type=number]::-webkit-outer-spin-button,
+  input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
+  button{
+    height:38px;border:0.5px solid var(--border);border-radius:8px;
+    background:var(--text);color:#fff;font-size:14px;font-weight:500;
+    cursor:pointer;padding:0 16px;white-space:nowrap;
+  }
+  button:active{transform:scale(0.98);}
+  .stats{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px;}
+  .stat{background:var(--card);border:0.5px solid var(--border);border-radius:12px;padding:12px;}
+  .stat .label{font-size:12px;color:var(--muted);margin-bottom:4px;}
+  .stat .value{font-size:20px;font-weight:500;}
+  .list-item{
+    display:flex;justify-content:space-between;align-items:center;
+    padding:10px 0;border-bottom:0.5px solid var(--border);
+    font-size:14px;
+  }
+  .list-item:last-child{border-bottom:none;}
+  .li-left{display:flex;flex-direction:column;gap:2px;}
+  .li-name{font-weight:500;}
+  .li-sub{font-size:12px;color:var(--muted);}
+  .li-right{display:flex;align-items:center;gap:10px;}
+  .amount{font-weight:500;}
+  .amount.expense{color:var(--danger);}
+  .del{
+    background:none;border:none;color:var(--muted);cursor:pointer;
+    font-size:16px;height:auto;padding:0 4px;width:auto;
+  }
+  .empty{color:var(--muted);font-size:14px;text-align:center;padding:20px 0;}
+  .month-label{font-size:13px;color:var(--muted);margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;}
+  .month-nav{display:flex;align-items:center;gap:10px;margin-bottom:16px;}
+  .month-nav-btn{
+    width:32px;height:32px;padding:0;border-radius:8px;
+    display:flex;align-items:center;justify-content:center;flex:none;
+    background:var(--card);color:var(--text);font-size:16px;
+  }
+  .month-nav-title{flex:1;text-align:center;font-size:15px;font-weight:500;}
+  .limit-link{color:var(--accent);font-size:13px;cursor:pointer;user-select:none;}
+  .limit-edit{display:none;gap:8px;margin-bottom:16px;}
+  .limit-edit.open{display:flex;}
+  .progress{height:6px;border-radius:4px;background:var(--border);overflow:hidden;margin-top:8px;}
+  .progress-fill{height:100%;border-radius:4px;background:var(--green);transition:width .2s;}
+  .progress-fill.over{background:var(--danger);}
+  .limit-note{font-size:12px;color:var(--muted);margin-top:6px;}
+  .group{padding:14px 0;border-bottom:1px solid var(--border);}
+  .group:first-child{padding-top:0;}
+  .group:last-child{border-bottom:none;padding-bottom:0;}
+  .group-head{
+    display:flex;justify-content:space-between;align-items:center;
+    padding:0 0 8px;font-size:14px;font-weight:600;color:var(--text);
+  }
+  .group-head .g-total{color:var(--muted);font-weight:400;}
+  table.tbl{width:100%;border-collapse:collapse;font-size:14px;table-layout:fixed;}
+  table.tbl td{padding:8px 0;border-bottom:0.5px solid var(--border);vertical-align:middle;}
+  table.tbl tr:last-child td{border-bottom:none;}
+  table.tbl td.t-date{width:64px;color:var(--muted);font-size:12px;}
+  table.tbl td.t-sub{color:var(--text);}
+  table.tbl td.t-amount{width:88px;text-align:right;color:var(--danger);font-weight:500;white-space:nowrap;}
+  table.tbl td.t-del{width:24px;text-align:right;}
+  table.tbl tr{cursor:pointer;}
+  table.tbl tr:hover td{background:var(--bg);}
+  .edit-note{font-size:12px;color:var(--accent);margin-bottom:8px;display:none;}
+  .edit-note.on{display:flex;justify-content:space-between;align-items:center;}
+  .edit-cancel{cursor:pointer;text-decoration:underline;}
+  .cat-limit-link{color:var(--accent);font-size:12px;cursor:pointer;user-select:none;white-space:nowrap;}
+  .cat-progress-wrap{padding:2px 0 10px;}
+  .cat-limit-edit-row{display:flex;gap:8px;padding:6px 0 10px;}
+  .cat-limit-edit-row input{height:32px;}
+  .cat-limit-edit-row button{height:32px;font-size:13px;padding:0 10px;}
+  .cat-limit-note{font-size:12px;color:var(--muted);margin-top:4px;}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;}
+  .chip{
+    display:flex;align-items:center;gap:6px;
+    background:var(--bg);border:0.5px solid var(--border);border-radius:16px;
+    padding:5px 8px 5px 12px;font-size:13px;
+  }
+  .chip-remove{cursor:pointer;color:var(--muted);font-size:15px;line-height:1;padding:0 2px;}
+  .chip-remove:hover{color:var(--danger);}
+  .cat-picker-btn{
+    background:var(--bg);color:var(--text);text-align:left;font-weight:400;
+    border:0.5px solid var(--border);
+  }
+  .cat-picker-btn span{font-weight:500;}
+  .cat-picker-panel{background:var(--bg);border-radius:8px;padding:10px;margin-bottom:8px;}
+  .cat-picker-chip{cursor:pointer;}
+  .cat-picker-chip.selected{background:var(--text);color:#fff;border-color:var(--text);}
+  .page{display:none;}
+  .page.active{display:block;}
+  .back-link{color:var(--accent);font-size:14px;cursor:pointer;user-select:none;margin-bottom:16px;display:inline-block;}
+  .open-categories-btn{
+    width:100%;background:var(--card);color:var(--text);
+    border:0.5px solid var(--border);text-align:left;
+    display:flex;justify-content:space-between;align-items:center;
+    margin-bottom:20px;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Мой трекер трат</h1>
+
+  <button type="button" id="open-categories-btn" class="open-categories-btn">
+    <span>История</span>
+    <span>&rsaquo;</span>
+  </button>
+
+  <div class="month-label">
+    <span></span>
+    <span class="limit-link" id="sync-toggle">Синхронизация</span>
+  </div>
+  <div id="sync-edit" style="display:none;margin-bottom:16px;">
+    <div class="row">
+      <input type="text" id="sync-code-input" placeholder="Придумай или введи код синхронизации">
+      <button id="sync-connect">Подключить</button>
+    </div>
+    <div class="limit-note" id="sync-status"></div>
+    <span class="limit-link" id="sync-disconnect" style="display:none;">Отключить это устройство</span>
+  </div>
+
+  <div id="view-main" class="page active">
+  <div class="month-nav">
+    <button class="month-nav-btn" id="month-prev" aria-label="Предыдущий месяц">&lsaquo;</button>
+    <div class="month-nav-title" id="exp-month-label"></div>
+    <button class="month-nav-btn" id="month-next" aria-label="Следующий месяц">&rsaquo;</button>
+  </div>
+
+  <div class="month-label">
+    <span></span>
+    <span style="display:flex;gap:14px;">
+      <span class="limit-link" id="income-toggle">Пополнить</span>
+      <span class="limit-link" id="exp-limit-toggle">Лимит на месяц</span>
+    </span>
+  </div>
+  <div class="row limit-edit" id="exp-limit-edit">
+    <input type="number" id="exp-limit-input" placeholder="Например 30000" inputmode="decimal">
+    <button id="exp-limit-save">Сохранить</button>
+  </div>
+  <div id="income-edit" style="display:none;margin-bottom:16px;">
+    <div class="row">
+      <input type="number" id="income-amount" placeholder="Сумма" inputmode="decimal">
+      <input type="text" id="income-note" placeholder="Откуда (необязательно)">
+    </div>
+    <div class="row">
+      <input type="number" id="income-day" placeholder="День" min="1" max="31" step="1" style="max-width:100px;">
+      <button id="income-add">Добавить</button>
+    </div>
+  </div>
+  <div class="stats">
+    <div class="stat">
+      <div class="label">Потрачено за месяц</div>
+      <div class="value" id="exp-total">0 ₽</div>
+    </div>
+    <div class="stat">
+      <div class="label">Записей</div>
+      <div class="value" id="exp-count">0</div>
+    </div>
+  </div>
+  <div class="card" id="exp-limit-card" style="display:none;">
+    <div class="label" style="font-size:12px;color:var(--muted);">Лимит на месяц: <span id="exp-limit-value"></span></div>
+    <div class="progress"><div class="progress-fill" id="exp-limit-fill"></div></div>
+    <div class="limit-note" id="exp-limit-note"></div>
+    <div class="limit-note" id="exp-limit-allocated"></div>
+  </div>
+
+  <div class="month-label">
+    <span></span>
+    <span class="limit-link" id="categories-toggle">Категории</span>
+  </div>
+  <div id="categories-edit" style="display:none;">
+    <div class="row">
+      <input type="text" id="new-category-input" placeholder="Новая категория">
+      <button id="new-category-add">Добавить</button>
+    </div>
+    <div id="category-chips" style="margin-bottom:16px;"></div>
+  </div>
+
+  <div class="card">
+    <div class="edit-note" id="edit-note">
+      <span>Редактирование записи</span>
+      <span class="edit-cancel" id="edit-cancel">Отменить</span>
+    </div>
+    <div class="row">
+      <input type="number" id="exp-amount" placeholder="Сумма" inputmode="decimal">
+      <button type="button" id="category-picker-btn" class="cat-picker-btn">Категория: <span id="category-picker-label">не выбрана</span></button>
+    </div>
+    <div class="cat-picker-panel" id="category-picker-panel" style="display:none;">
+      <div id="category-picker-chips"></div>
+    </div>
+    <div class="row">
+      <input type="text" id="exp-subcategory" placeholder="Подкатегория" list="subcategory-suggestions" autocomplete="off">
+      <datalist id="subcategory-suggestions"></datalist>
+    </div>
+    <div class="row">
+      <input type="number" id="exp-day" placeholder="День" min="1" max="31" step="1" style="max-width:100px;">
+      <button id="exp-add">Добавить</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="label" style="font-size:12px;color:var(--muted);margin-bottom:6px;">Последние траты</div>
+    <div id="recent-list"></div>
+  </div>
+  </div>
+
+  <div id="view-categories" class="page">
+    <span class="back-link" id="back-to-main-btn">&lsaquo; Назад</span>
+    <div class="card" id="income-history-card" style="display:none;">
+      <div class="label" style="font-size:12px;color:var(--muted);margin-bottom:6px;">Пополнения</div>
+      <div id="income-list"></div>
+    </div>
+    <div class="card" id="exp-list-card">
+      <div id="exp-list"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://lfrlcpaeotffxibyilrj.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxmcmxjcGFlb3RmZnhpYnlpbHJqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcxNTQ1ODUsImV4cCI6MjEwMjczMDU4NX0.riEbDC6vC0wage2o4tGLhjLRzo_uCUnj5jV8FVpwRFY';
+let syncCode = localStorage.getItem('tracker_sync_code') || '';
+
+function updateSyncStatus(text){
+  document.getElementById('sync-status').textContent = text;
+}
+
+async function pullFromCloud(){
+  if(!syncCode) return false;
+  try{
+    const res = await fetch(SUPABASE_URL + '/rest/v1/tracker_sync?sync_code=eq.' + encodeURIComponent(syncCode) + '&select=*', {
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: 'Bearer ' + SUPABASE_ANON_KEY
+      }
+    });
+    if(!res.ok) throw new Error('fetch failed: ' + res.status);
+    const rows = await res.json();
+    if(rows && rows.length>0){
+      expenses = rows[0].expenses || [];
+      settings = rows[0].settings || settings;
+      if(!settings.categoryLimits) settings.categoryLimits = {};
+      if(!settings.categories) settings.categories = [];
+      if(!settings.budgetLimit || typeof settings.budgetLimit !== 'object') settings.budgetLimit = {};
+      if(!Array.isArray(settings.incomes)) settings.incomes = [];
+      localStorage.setItem('tracker_expenses', JSON.stringify(expenses));
+      localStorage.setItem('tracker_settings', JSON.stringify(settings));
+    }else{
+      await pushToCloud();
+    }
+    return true;
+  }catch(err){
+    console.error('Sync pull error', err);
+    return false;
+  }
+}
+
+async function pushToCloud(){
+  if(!syncCode) return;
+  try{
+    await fetch(SUPABASE_URL + '/rest/v1/tracker_sync', {
+      method: 'POST',
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: 'Bearer ' + SUPABASE_ANON_KEY,
+        'Content-Type': 'application/json',
+        'Prefer': 'resolution=merge-duplicates'
+      },
+      body: JSON.stringify({ sync_code: syncCode, expenses: expenses, settings: settings, updated_at: new Date().toISOString() })
+    });
+  }catch(err){
+    console.error('Sync push error', err);
+  }
+}
+
+document.getElementById('sync-toggle').addEventListener('click', ()=>{
+  const editEl = document.getElementById('sync-edit');
+  editEl.style.display = editEl.style.display==='none' ? 'block' : 'none';
+  if(editEl.style.display==='block'){
+    document.getElementById('sync-code-input').value = syncCode;
+    document.getElementById('sync-disconnect').style.display = syncCode ? 'inline-block' : 'none';
+    updateSyncStatus(syncCode ? ('Подключено. Код: ' + syncCode) : 'Пока не подключено — данные хранятся только в этом браузере');
+  }
+});
+
+document.getElementById('sync-connect').addEventListener('click', async ()=>{
+  const code = document.getElementById('sync-code-input').value.trim();
+  if(!code) return;
+  syncCode = code;
+  localStorage.setItem('tracker_sync_code', code);
+  updateSyncStatus('Подключаемся…');
+  const ok = await pullFromCloud();
+  updateSyncStatus(ok ? ('Подключено. Код: ' + syncCode) : 'Не удалось подключиться, проверь интернет');
+  document.getElementById('sync-disconnect').style.display = ok ? 'inline-block' : 'none';
+  renderCategories();
+  renderExpenses();
+});
+
+document.getElementById('sync-disconnect').addEventListener('click', ()=>{
+  syncCode = '';
+  localStorage.removeItem('tracker_sync_code');
+  document.getElementById('sync-code-input').value = '';
+  document.getElementById('sync-disconnect').style.display = 'none';
+  updateSyncStatus('Отключено — данные этого устройства остаются локально');
+});
+
+const todayStr = () => new Date().toISOString().slice(0,10);
+const monthKey = (dateStr) => dateStr.slice(0,7);
+const currentMonthKey = () => monthKey(todayStr());
+const monthNames = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
+let selectedMonth = currentMonthKey();
+
+function formatMonthLabel(key){
+  const [y,m] = key.split('-');
+  const name = monthNames[parseInt(m,10)-1];
+  return name.charAt(0).toUpperCase() + name.slice(1) + ' ' + y;
+}
+
+function daysInMonth(mk){
+  const [y,m] = mk.split('-').map(Number);
+  return new Date(y, m, 0).getDate();
+}
+
+function monthDefaultDay(mk){
+  return Math.min(new Date().getDate(), daysInMonth(mk));
+}
+
+function buildDate(mk, day){
+  const dim = daysInMonth(mk);
+  const d = Math.min(Math.max(parseInt(day,10)||monthDefaultDay(mk), 1), dim);
+  return mk + '-' + String(d).padStart(2,'0');
+}
+
+function fillDayDefault(){
+  document.getElementById('exp-day').value = monthDefaultDay(selectedMonth);
+}
+
+function shiftMonth(delta){
+  const [y,m] = selectedMonth.split('-').map(Number);
+  const d = new Date(y, m-1+delta, 1);
+  selectedMonth = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
+  fillDayDefault();
+  cancelEdit();
+  document.getElementById('exp-limit-edit').classList.remove('open');
+  document.getElementById('income-edit').style.display = 'none';
+  renderExpenses();
+}
+
+document.getElementById('month-prev').addEventListener('click', ()=>shiftMonth(-1));
+document.getElementById('month-next').addEventListener('click', ()=>shiftMonth(1));
+fillDayDefault();
+
+let expenses = [];
+let settings = { budgetLimit: {}, categoryLimits: {}, categories: [], incomes: [] };
+
+function monthIncomes(mk){
+  return (settings.incomes || []).filter(x=>monthKey(x.date)===mk);
+}
+
+function monthIncomeSum(mk){
+  return monthIncomes(mk).reduce((s,x)=>s+x.amount,0);
+}
+
+// итоговый бюджет месяца = базовый лимит (переносится вперёд) + пополнения именно этого месяца
+function monthBudget(mk){
+  const base = effectiveBudgetLimit(mk) || 0;
+  const total = base + monthIncomeSum(mk);
+  return total>0 ? total : null;
+}
+
+function monthDiff(a, b){
+  const [ay,am] = a.split('-').map(Number);
+  const [by,bm] = b.split('-').map(Number);
+  return (by-ay)*12 + (bm-am);
+}
+
+function effectiveBudgetLimit(mk){
+  const entries = settings.budgetLimit;
+  if(!entries || typeof entries !== 'object') return null;
+  const keys = Object.keys(entries).filter(k=>k<=mk).sort();
+  if(keys.length===0) return null;
+  const v = entries[keys[keys.length-1]];
+  return (v==null) ? null : v;
+}
+
+function effectiveCatLimit(cat, mk){
+  const entries = settings.categoryLimits[cat];
+  if(!entries) return undefined;
+  const keys = Object.keys(entries).filter(k=>k<=mk).sort();
+  if(keys.length===0) return undefined;
+  const lastKey = keys[keys.length-1];
+  if(monthDiff(lastKey, mk) >= 12) return undefined;
+  const v = entries[lastKey];
+  return (v==null) ? undefined : v;
+}
+
+function getCatLimits(mk){
+  const result = {};
+  Object.keys(settings.categoryLimits).forEach(cat=>{
+    const v = effectiveCatLimit(cat, mk);
+    if(v!=null) result[cat] = v;
+  });
+  return result;
+}
+let editingId = null;
+let editingCatLimit = null;
+let selectedCategory = '';
+
+// подсказки подкатегорий из истории трат: сначала из выбранной категории, затем из остальных;
+// внутри группы — чаще используемые первыми, при равенстве — более свежие
+function updateSubcategorySuggestions(){
+  const listEl = document.getElementById('subcategory-suggestions');
+  if(!listEl) return;
+  const stats = new Map();
+  expenses.forEach(x=>{
+    const name = (x.subcategory || '').trim();
+    if(!name) return;
+    const key = name.toLowerCase();
+    let s = stats.get(key);
+    if(!s) s = { name, inCat: 0, total: 0, last: '', spellings: {} };
+    s.total++;
+    if(selectedCategory && x.category===selectedCategory) s.inCat++;
+    if(x.date >= s.last) s.last = x.date;
+    // показываем самое частое написание (при равенстве — более позднее)
+    const sp = s.spellings[name] || (s.spellings[name] = { n: 0, last: '' });
+    sp.n++;
+    if(x.date >= sp.last) sp.last = x.date;
+    const best = Object.entries(s.spellings)
+      .sort((a,b)=> b[1].n-a[1].n || b[1].last.localeCompare(a[1].last))[0][0];
+    s.name = best;
+    stats.set(key, s);
+  });
+  const all = [...stats.values()];
+  const byUse = (a,b)=> b.total-a.total || b.last.localeCompare(a.last);
+  const first = all.filter(s=>s.inCat>0).sort((a,b)=> b.inCat-a.inCat || byUse(a,b));
+  const rest = all.filter(s=>s.inCat===0).sort(byUse);
+  listEl.innerHTML = [...first, ...rest].slice(0,50)
+    .map(s=>`<option value="${escapeHtml(s.name)}"></option>`).join('');
+}
+
+function updateCategoryLabel(){
+  document.getElementById('category-picker-label').textContent = selectedCategory || 'не выбрана';
+  updateSubcategorySuggestions();
+}
+
+function startEdit(id){
+  const x = expenses.find(e=>e.id===id);
+  if(!x) return;
+  editingId = id;
+  document.getElementById('exp-amount').value = x.amount;
+  selectedCategory = x.category || '';
+  updateCategoryLabel();
+  document.getElementById('exp-subcategory').value = x.subcategory || '';
+  document.getElementById('exp-day').value = parseInt(x.date.slice(8,10),10);
+  document.getElementById('exp-add').textContent = 'Сохранить';
+  document.getElementById('edit-note').classList.add('on');
+}
+
+function cancelEdit(){
+  editingId = null;
+  document.getElementById('exp-amount').value = '';
+  selectedCategory = '';
+  updateCategoryLabel();
+  document.getElementById('exp-subcategory').value = '';
+  fillDayDefault();
+  document.getElementById('exp-add').textContent = 'Добавить';
+  document.getElementById('edit-note').classList.remove('on');
+}
+
+document.getElementById('edit-cancel').addEventListener('click', cancelEdit);
+
+async function loadData(){
+  try{
+    const e = localStorage.getItem('tracker_expenses');
+    expenses = e ? JSON.parse(e) : [];
+  }catch(err){ expenses = []; }
+  try{
+    const s = localStorage.getItem('tracker_settings');
+    settings = s ? JSON.parse(s) : settings;
+    if(!settings.categoryLimits) settings.categoryLimits = {};
+    // миграция общего лимита со старого формата (было одно число на все месяцы)
+    if(typeof settings.budgetLimit === 'number'){
+      settings.budgetLimit = { '0000-01': settings.budgetLimit };
+    }
+    if(!settings.budgetLimit || typeof settings.budgetLimit !== 'object'){
+      settings.budgetLimit = {};
+    }
+    // миграция со старого формата №1 (лимиты категорий были общими на все месяцы)
+    const oldFlat = Object.entries(settings.categoryLimits).filter(([,v])=>typeof v === 'number');
+    if(oldFlat.length>0){
+      const migrated = {};
+      oldFlat.forEach(([k,v])=>migrated[k]=v);
+      settings.categoryLimits = { [currentMonthKey()]: migrated };
+    }
+    // миграция со старого формата №2 (лимиты хранились по месяцам, не переносились вперёд)
+    const topKeys = Object.keys(settings.categoryLimits);
+    const looksMonthKeyed = topKeys.length>0 && topKeys.every(k=>/^\d{4}-\d{2}$/.test(k));
+    if(looksMonthKeyed){
+      const migrated = {};
+      topKeys.forEach(mkey=>{
+        Object.entries(settings.categoryLimits[mkey]).forEach(([cat,val])=>{
+          if(!migrated[cat]) migrated[cat] = {};
+          migrated[cat][mkey] = val;
+        });
+      });
+      settings.categoryLimits = migrated;
+    }
+    if(!settings.categories) settings.categories = [];
+    if(!Array.isArray(settings.incomes)) settings.incomes = [];
+    // подтягиваем категории, которые уже встречались в тратах, но не в списке
+    const usedCats = [...new Set(expenses.map(x=>x.category).filter(Boolean))];
+    usedCats.forEach(c=>{ if(!settings.categories.includes(c)) settings.categories.push(c); });
+  }catch(err){ /* нет настроек */ }
+  const initLimit = effectiveBudgetLimit(selectedMonth);
+  if(initLimit) document.getElementById('exp-limit-input').value = initLimit;
+  renderCategories();
+  renderExpenses();
+  if(syncCode){
+    updateSyncStatus('Синхронизация с облаком…');
+    const ok = await pullFromCloud();
+    updateSyncStatus(ok ? ('Подключено. Код: ' + syncCode) : 'Не удалось подключиться, проверь интернет');
+    if(ok){
+      renderCategories();
+      renderExpenses();
+    }
+  }
+}
+
+function saveSettings(){
+  try{ localStorage.setItem('tracker_settings', JSON.stringify(settings)); }
+  catch(err){ console.error('Storage error', err); }
+  if(syncCode) pushToCloud();
+}
+
+function renderCategories(){
+  const chipsEl = document.getElementById('category-chips');
+  const sorted = [...settings.categories].sort((a,b)=>a.localeCompare(b,'ru'));
+  chipsEl.innerHTML = sorted.length===0
+    ? '<div class="empty" style="padding:8px 0;">Пока нет ни одной категории</div>'
+    : '<div class="chips">' + sorted.map(c=>`
+        <div class="chip">
+          <span>${escapeHtml(c)}</span>
+          <span class="chip-remove" data-cat="${escapeHtml(c)}" aria-label="Удалить категорию">&times;</span>
+        </div>
+      `).join('') + '</div>';
+  chipsEl.querySelectorAll('.chip-remove').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      settings.categories = settings.categories.filter(c=>c!==el.dataset.cat);
+      if(selectedCategory===el.dataset.cat){ selectedCategory=''; updateCategoryLabel(); }
+      saveSettings();
+      renderCategories();
+      renderCategoryPicker();
+      renderExpenses();
+    });
+  });
+  renderCategoryPicker();
+}
+
+function renderCategoryPicker(){
+  const panelChips = document.getElementById('category-picker-chips');
+  const sorted = [...settings.categories].sort((a,b)=>a.localeCompare(b,'ru'));
+  panelChips.innerHTML = sorted.length===0
+    ? '<div class="empty" style="padding:8px 0;">Сначала добавьте категорию выше</div>'
+    : '<div class="chips">' + sorted.map(c=>`
+        <div class="chip cat-picker-chip${c===selectedCategory ? ' selected' : ''}" data-cat="${escapeHtml(c)}">${escapeHtml(c)}</div>
+      `).join('') + '</div>';
+  panelChips.querySelectorAll('.cat-picker-chip').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      selectedCategory = (selectedCategory===el.dataset.cat) ? '' : el.dataset.cat;
+      updateCategoryLabel();
+      document.getElementById('category-picker-panel').style.display = 'none';
+    });
+  });
+}
+
+document.getElementById('category-picker-btn').addEventListener('click', ()=>{
+  const panel = document.getElementById('category-picker-panel');
+  panel.style.display = panel.style.display==='none' ? 'block' : 'none';
+});
+
+function addCategory(){
+  const input = document.getElementById('new-category-input');
+  const name = input.value.trim();
+  if(!name) return;
+  if(!settings.categories.some(c=>c.toLowerCase()===name.toLowerCase())){
+    settings.categories.push(name);
+    saveSettings();
+    renderCategories();
+    renderExpenses();
+  }
+  input.value = '';
+}
+document.getElementById('categories-toggle').addEventListener('click', ()=>{
+  document.getElementById('categories-edit').style.display =
+    document.getElementById('categories-edit').style.display==='none' ? 'block' : 'none';
+});
+
+document.getElementById('new-category-add').addEventListener('click', addCategory);
+document.getElementById('new-category-input').addEventListener('keydown', (ev)=>{
+  if(ev.key==='Enter'){ ev.preventDefault(); addCategory(); }
+});
+
+function saveExpenses(){
+  try{ localStorage.setItem('tracker_expenses', JSON.stringify(expenses)); }
+  catch(err){ console.error('Storage error', err); }
+  if(syncCode) pushToCloud();
+}
+
+document.getElementById('exp-limit-toggle').addEventListener('click',()=>{
+  const cur = effectiveBudgetLimit(selectedMonth);
+  document.getElementById('exp-limit-input').value = cur || '';
+  document.getElementById('exp-limit-edit').classList.toggle('open');
+});
+document.getElementById('exp-limit-save').addEventListener('click', ()=>{
+  const val = parseFloat(document.getElementById('exp-limit-input').value);
+  if(!settings.budgetLimit || typeof settings.budgetLimit !== 'object') settings.budgetLimit = {};
+  settings.budgetLimit[selectedMonth] = val>0 ? val : null;
+  saveSettings();
+  document.getElementById('exp-limit-edit').classList.remove('open');
+  renderExpenses();
+});
+
+document.getElementById('income-toggle').addEventListener('click',()=>{
+  const el = document.getElementById('income-edit');
+  const opening = el.style.display==='none';
+  el.style.display = opening ? 'block' : 'none';
+  if(opening){
+    document.getElementById('income-day').value = monthDefaultDay(selectedMonth);
+  }
+});
+
+document.getElementById('income-add').addEventListener('click', ()=>{
+  const amountEl = document.getElementById('income-amount');
+  const noteEl = document.getElementById('income-note');
+  const dayEl = document.getElementById('income-day');
+  const amount = parseFloat(amountEl.value);
+  if(!amount || amount<=0){ amountEl.focus(); return; }
+  if(!Array.isArray(settings.incomes)) settings.incomes = [];
+  settings.incomes.push({
+    id: Date.now().toString(36)+Math.random().toString(36).slice(2,6),
+    amount: amount,
+    note: noteEl.value.trim(),
+    date: buildDate(selectedMonth, dayEl.value)
+  });
+  saveSettings();
+  amountEl.value = '';
+  noteEl.value = '';
+  dayEl.value = monthDefaultDay(selectedMonth);
+  renderExpenses();
+});
+
+function renderIncomes(){
+  const listEl = document.getElementById('income-list');
+  const cardEl = document.getElementById('income-history-card');
+  const items = monthIncomes(selectedMonth).sort((a,b)=>b.date.localeCompare(a.date));
+  if(items.length===0){
+    listEl.innerHTML = '';
+    cardEl.style.display = 'none';
+    return;
+  }
+  cardEl.style.display = 'block';
+  listEl.innerHTML = items.map(x=>`
+    <div class="list-item">
+      <div class="li-left">
+        <div class="li-name">${escapeHtml(x.note || 'Пополнение')}</div>
+        <div class="li-sub">${x.date.slice(5)}</div>
+      </div>
+      <div class="li-right">
+        <div class="amount" style="color:var(--green);">+${Math.round(x.amount).toLocaleString('ru-RU')} ₽</div>
+        <button class="del" data-income-id="${x.id}" aria-label="Удалить">&times;</button>
+      </div>
+    </div>
+  `).join('');
+  listEl.querySelectorAll('.del').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      settings.incomes = settings.incomes.filter(x=>x.id!==btn.dataset.incomeId);
+      saveSettings();
+      renderExpenses();
+    });
+  });
+}
+
+function setProgress(fillEl, current, target){
+  const pct = target>0 ? Math.min(100, Math.round((current/target)*100)) : 0;
+  fillEl.style.width = pct + '%';
+  fillEl.classList.toggle('over', current>target);
+}
+
+function renderExpenses(){
+  const mk = selectedMonth;
+  document.getElementById('exp-month-label').textContent = formatMonthLabel(mk);
+  const monthItems = expenses.filter(x=>monthKey(x.date)===mk);
+  const total = monthItems.reduce((s,x)=>s+x.amount,0);
+  document.getElementById('exp-total').textContent = Math.round(total).toLocaleString('ru-RU') + ' ₽';
+  document.getElementById('exp-count').textContent = monthItems.length;
+  updateSubcategorySuggestions();
+
+  const recentEl = document.getElementById('recent-list');
+  const recent = [...monthItems].sort((a,b)=>b.date.localeCompare(a.date) || b.id.localeCompare(a.id)).slice(0,5);
+  if(recent.length===0){
+    recentEl.innerHTML = '<div class="empty" style="padding:8px 0;">Пока нет трат за этот месяц</div>';
+  }else{
+    recentEl.innerHTML = recent.map(x=>`
+      <div class="list-item">
+        <div class="li-left">
+          <div class="li-name">${escapeHtml(x.category || 'Без категории')}${x.subcategory ? ' · ' + escapeHtml(x.subcategory) : ''}</div>
+          <div class="li-sub">${x.date.slice(5)}</div>
+        </div>
+        <div class="amount expense">-${Math.round(x.amount).toLocaleString('ru-RU')} ₽</div>
+      </div>
+    `).join('');
+  }
+
+  renderIncomes();
+  const limitCard = document.getElementById('exp-limit-card');
+  const curBudgetLimit = monthBudget(mk);
+  if(curBudgetLimit){
+    limitCard.style.display = 'block';
+    const incSum = monthIncomeSum(mk);
+    document.getElementById('exp-limit-value').textContent = Math.round(curBudgetLimit).toLocaleString('ru-RU') + ' ₽'
+      + (incSum>0 ? ' (включая пополнения +' + Math.round(incSum).toLocaleString('ru-RU') + ' ₽)' : '');
+    setProgress(document.getElementById('exp-limit-fill'), total, curBudgetLimit);
+    const left = curBudgetLimit - total;
+    document.getElementById('exp-limit-note').textContent = left>=0
+      ? 'Осталось ' + Math.round(left).toLocaleString('ru-RU') + ' ₽'
+      : 'Превышение на ' + Math.round(-left).toLocaleString('ru-RU') + ' ₽';
+    const allocated = Object.values(getCatLimits(mk)).reduce((s,v)=>s+v,0);
+    const allocEl = document.getElementById('exp-limit-allocated');
+    if(allocated>0){
+      const unallocated = curBudgetLimit - allocated;
+      allocEl.textContent = 'Распределено по категориям: ' + Math.round(allocated).toLocaleString('ru-RU') + ' ₽'
+        + (unallocated>=0
+          ? ', свободно ' + Math.round(unallocated).toLocaleString('ru-RU') + ' ₽'
+          : ', превышает месячный лимит на ' + Math.round(-unallocated).toLocaleString('ru-RU') + ' ₽');
+      allocEl.style.color = unallocated<0 ? 'var(--danger)' : 'var(--muted)';
+    }else{
+      allocEl.textContent = '';
+    }
+  }else{
+    limitCard.style.display = 'none';
+  }
+
+  const listEl = document.getElementById('exp-list');
+  if(monthItems.length===0 && settings.categories.length===0){
+    listEl.innerHTML = '<div class="empty">Пока нет трат за этот месяц</div>';
+    return;
+  }
+
+  const groups = {};
+  monthItems.forEach(x=>{
+    const key = x.category || 'Без категории';
+    if(!groups[key]) groups[key] = [];
+    groups[key].push(x);
+  });
+  settings.categories.forEach(c=>{ if(!groups[c]) groups[c] = []; });
+  const categoryNames = Object.keys(groups).sort((a,b)=>a.localeCompare(b,'ru'));
+
+  listEl.innerHTML = categoryNames.map(cat=>{
+    const items = [...groups[cat]].sort((a,b)=>b.date.localeCompare(a.date));
+    const subtotal = items.reduce((s,x)=>s+x.amount,0);
+    const rows = items.length>0 ? items.map(x=>`
+      <tr data-id="${x.id}">
+        <td class="t-date">${x.date.slice(5)}</td>
+        <td class="t-sub">${escapeHtml(x.subcategory || '—')}</td>
+        <td class="t-amount">-${Math.round(x.amount).toLocaleString('ru-RU')} ₽</td>
+        <td class="t-del"><button class="del" data-id="${x.id}" aria-label="Удалить">&times;</button></td>
+      </tr>
+    `).join('') : '';
+    const catLimit = getCatLimits(mk)[cat];
+    const catEsc = escapeHtml(cat);
+    let limitBlock = '';
+    if(catLimit){
+      const left = catLimit - subtotal;
+      limitBlock = `
+        <div class="cat-progress-wrap">
+          <div class="progress"><div class="progress-fill${subtotal>catLimit?' over':''}" style="width:${Math.min(100,Math.round(subtotal/catLimit*100))}%"></div></div>
+          <div class="cat-limit-note">${left>=0 ? 'Осталось '+Math.round(left).toLocaleString('ru-RU')+' ₽' : 'Превышение на '+Math.round(-left).toLocaleString('ru-RU')+' ₽'} из ${Math.round(catLimit).toLocaleString('ru-RU')} ₽</div>
+        </div>
+      `;
+    }
+    let editRow = '';
+    if(editingCatLimit===cat){
+      editRow = `
+        <div class="cat-limit-edit-row">
+          <input type="number" class="cat-limit-input" data-cat="${catEsc}" placeholder="Лимит, ₽" inputmode="decimal" value="${catLimit||''}">
+          <button class="cat-limit-save" data-cat="${catEsc}">Сохранить</button>
+          ${catLimit ? `<button class="cat-limit-remove" data-cat="${catEsc}">Убрать</button>` : ''}
+        </div>
+        <div class="cat-limit-note cat-limit-error" style="color:var(--danger);display:none;"></div>
+      `;
+    }
+    return `
+      <div class="group">
+        <div class="group-head">
+          <span>${catEsc}</span>
+          <span style="display:flex;gap:10px;align-items:center;">
+            <span class="cat-limit-link" data-cat="${catEsc}">${catLimit ? 'Лимит' : 'Задать лимит'}</span>
+            <span class="g-total">${Math.round(subtotal).toLocaleString('ru-RU')} ₽</span>
+          </span>
+        </div>
+        ${limitBlock}
+        ${editRow}
+        ${items.length>0 ? `<table class="tbl"><tbody>${rows}</tbody></table>` : '<div class="empty" style="padding:8px 0;">Пока нет трат в этой категории</div>'}
+      </div>
+    `;
+  }).join('');
+
+  listEl.querySelectorAll('.cat-limit-link').forEach(link=>{
+    link.addEventListener('click', ()=>{
+      const cat = link.dataset.cat;
+      editingCatLimit = (editingCatLimit===cat) ? null : cat;
+      renderExpenses();
+    });
+  });
+  listEl.querySelectorAll('.cat-limit-save').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const cat = btn.dataset.cat;
+      const row = btn.closest('.group');
+      const input = row.querySelector('.cat-limit-input[data-cat="'+CSS.escape(cat)+'"]');
+      const errorEl = row.querySelector('.cat-limit-error');
+      const val = parseFloat(input.value);
+      if(!settings.categoryLimits[cat]) settings.categoryLimits[cat] = {};
+      if(val>0){
+        const curLimit = monthBudget(mk);
+        if(curLimit){
+          const otherSum = Object.entries(getCatLimits(mk))
+            .filter(([k])=>k!==cat)
+            .reduce((s,[,v])=>s+v, 0);
+          if(otherSum + val > curLimit){
+            const room = curLimit - otherSum;
+            errorEl.textContent = room>0
+              ? 'Превышает месячный лимит. Максимум для этой категории: ' + Math.round(room).toLocaleString('ru-RU') + ' ₽'
+              : 'Остальные категории уже заняли весь месячный лимит';
+            errorEl.style.display = 'block';
+            return;
+          }
+        }
+        settings.categoryLimits[cat][mk] = val;
+      }else{
+        settings.categoryLimits[cat][mk] = null;
+      }
+      saveSettings();
+      editingCatLimit = null;
+      renderExpenses();
+    });
+  });
+  listEl.querySelectorAll('.cat-limit-remove').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const cat = btn.dataset.cat;
+      if(!settings.categoryLimits[cat]) settings.categoryLimits[cat] = {};
+      settings.categoryLimits[cat][mk] = null;
+      saveSettings();
+      editingCatLimit = null;
+      renderExpenses();
+    });
+  });
+
+  listEl.querySelectorAll('tr[data-id]').forEach(tr=>{
+    tr.addEventListener('click', (ev)=>{
+      if(ev.target.closest('.del')) return;
+      startEdit(tr.dataset.id);
+    });
+  });
+  listEl.querySelectorAll('.del').forEach(btn=>{
+    btn.addEventListener('click', (ev)=>{
+      ev.stopPropagation();
+      expenses = expenses.filter(x=>x.id!==btn.dataset.id);
+      if(editingId===btn.dataset.id) cancelEdit();
+      saveExpenses();
+      renderExpenses();
+    });
+  });
+}
+
+function escapeHtml(str){
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+document.getElementById('exp-add').addEventListener('click', ()=>{
+  const amountEl = document.getElementById('exp-amount');
+  const subcategoryEl = document.getElementById('exp-subcategory');
+  const dayEl = document.getElementById('exp-day');
+  const amount = parseFloat(amountEl.value);
+  if(!amount || amount<=0){ amountEl.focus(); return; }
+  const date = buildDate(selectedMonth, dayEl.value);
+  const catName = selectedCategory;
+  if(editingId){
+    const item = expenses.find(x=>x.id===editingId);
+    item.amount = amount;
+    item.category = catName;
+    item.subcategory = subcategoryEl.value.trim();
+    item.date = date;
+    saveExpenses();
+    cancelEdit();
+    renderExpenses();
+    return;
+  }
+  expenses.push({
+    id: Date.now().toString(36)+Math.random().toString(36).slice(2,6),
+    amount: amount,
+    category: catName,
+    subcategory: subcategoryEl.value.trim(),
+    date: date
+  });
+  saveExpenses();
+  amountEl.value='';
+  selectedCategory = '';
+  updateCategoryLabel();
+  subcategoryEl.value='';
+  fillDayDefault();
+  renderExpenses();
+});
+
+document.getElementById('open-categories-btn').addEventListener('click', ()=>{
+  document.getElementById('view-main').classList.remove('active');
+  document.getElementById('view-categories').classList.add('active');
+});
+document.getElementById('back-to-main-btn').addEventListener('click', ()=>{
+  document.getElementById('view-categories').classList.remove('active');
+  document.getElementById('view-main').classList.add('active');
+});
+
+loadData();
+</script>
+</body>
+</html>
