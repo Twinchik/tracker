@@ -6,7 +6,7 @@ name: Supabase keep-alive
 
 on:
   schedule:
-    - cron: "23 6 * * *"   # каждый день в 09:23 по Москве
+    - cron: "24 6 * * *"   # каждый день в 09:23 по Москве
   workflow_dispatch:        # кнопка ручного запуска во вкладке Actions
 
 jobs:
