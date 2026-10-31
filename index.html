@@ -281,6 +281,7 @@ async function pullFromCloud(){
       settings = rows[0].settings || settings;
       if(!settings.categoryLimits) settings.categoryLimits = {};
       if(!settings.categories) settings.categories = [];
+      if(!settings.categoryPeriods || typeof settings.categoryPeriods !== 'object') settings.categoryPeriods = {};
       if(!settings.budgetLimit || typeof settings.budgetLimit !== 'object') settings.budgetLimit = {};
       if(!Array.isArray(settings.incomes)) settings.incomes = [];
       localStorage.setItem('tracker_expenses', JSON.stringify(expenses));
@@ -383,6 +384,8 @@ function shiftMonth(delta){
   cancelEdit();
   document.getElementById('exp-limit-edit').classList.remove('open');
   document.getElementById('income-edit').style.display = 'none';
+  if(selectedCategory && !catActive(selectedCategory, selectedMonth)){ selectedCategory = ''; updateCategoryLabel(); }
+  renderCategories();
   renderExpenses();
 }
 
@@ -391,7 +394,46 @@ document.getElementById('month-next').addEventListener('click', ()=>shiftMonth(1
 fillDayDefault();
 
 let expenses = [];
-let settings = { budgetLimit: {}, categoryLimits: {}, categories: [], incomes: [] };
+let settings = { budgetLimit: {}, categoryLimits: {}, categories: [], categoryPeriods: {}, incomes: [] };
+
+// Категории действуют по месяцам: у каждой есть периоды {from, to}, to — первый месяц, где её уже нет (null — без конца).
+// Категория без периодов (старые данные) считается существующей всегда.
+function catPeriods(cat){
+  const p = settings.categoryPeriods && settings.categoryPeriods[cat];
+  return Array.isArray(p) ? p : [{ from: '0000-01', to: null }]; // пустой список — категория полностью удалена
+}
+function catActive(cat, mk){
+  return catPeriods(cat).some(p => p.from <= mk && (p.to == null || mk < p.to));
+}
+function activeCats(mk){
+  return settings.categories.filter(c => catActive(c, mk));
+}
+function addCategoryAt(name, mk){
+  if(!settings.categoryPeriods) settings.categoryPeriods = {};
+  const exist = settings.categories.find(c => c.toLowerCase() === name.toLowerCase());
+  if(!exist){
+    settings.categories.push(name);
+    settings.categoryPeriods[name] = [{ from: mk, to: null }];
+    return;
+  }
+  if(catActive(exist, mk)) return;
+  const periods = (settings.categoryPeriods[exist] || catPeriods(exist)).map(p => ({ from: p.from, to: p.to }));
+  const justClosed = periods.find(p => p.to === mk);
+  if(justClosed) justClosed.to = null; // удалили в этом же месяце — просто возвращаем
+  else periods.push({ from: mk, to: null });
+  settings.categoryPeriods[exist] = periods;
+}
+function removeCategoryAt(cat, mk){
+  if(!settings.categoryPeriods) settings.categoryPeriods = {};
+  const periods = catPeriods(cat)
+    .filter(p => p.from < mk)                       // периоды, начавшиеся в этом месяце или позже, убираем целиком
+    .map(p => ({ from: p.from, to: (p.to == null || p.to > mk) ? mk : p.to }));
+  settings.categoryPeriods[cat] = periods;
+  // лимит выключаем только с этого месяца, прошлые месяцы не трогаем
+  if(settings.categoryLimits[cat]){
+    settings.categoryLimits[cat][mk] = null;
+  }
+}
 
 function monthIncomes(mk){
   return (settings.incomes || []).filter(x=>monthKey(x.date)===mk);
@@ -437,7 +479,7 @@ function effectiveCatLimit(cat, mk){
 function getCatLimits(mk){
   const result = {};
   Object.keys(settings.categoryLimits).forEach(cat=>{
-    if(!settings.categories.includes(cat)) return; // лимиты удалённых категорий не считаем
+    if(!catActive(cat, mk)) return; // лимиты категорий, которых в этом месяце нет, не считаем
     const v = effectiveCatLimit(cat, mk);
     if(v!=null) result[cat] = v;
   });
@@ -547,10 +589,18 @@ async function loadData(){
       settings.categoryLimits = migrated;
     }
     if(!settings.categories) settings.categories = [];
+    if(!settings.categoryPeriods || typeof settings.categoryPeriods !== 'object') settings.categoryPeriods = {};
     if(!Array.isArray(settings.incomes)) settings.incomes = [];
     // подтягиваем категории, которые уже встречались в тратах, но не в списке
+    // (действуют с месяца самой ранней траты)
     const usedCats = [...new Set(expenses.map(x=>x.category).filter(Boolean))];
-    usedCats.forEach(c=>{ if(!settings.categories.includes(c)) settings.categories.push(c); });
+    usedCats.forEach(c=>{
+      if(!settings.categories.includes(c)){
+        settings.categories.push(c);
+        const first = expenses.filter(x=>x.category===c).map(x=>x.date.slice(0,7)).sort()[0];
+        settings.categoryPeriods[c] = [{ from: first || '0000-01', to: null }];
+      }
+    });
   }catch(err){ /* нет настроек */ }
   const initLimit = effectiveBudgetLimit(selectedMonth);
   if(initLimit) document.getElementById('exp-limit-input').value = initLimit;
@@ -575,7 +625,7 @@ function saveSettings(){
 
 function renderCategories(){
   const chipsEl = document.getElementById('category-chips');
-  const sorted = [...settings.categories].sort((a,b)=>a.localeCompare(b,'ru'));
+  const sorted = activeCats(selectedMonth).sort((a,b)=>a.localeCompare(b,'ru'));
   chipsEl.innerHTML = sorted.length===0
     ? '<div class="empty" style="padding:8px 0;">Пока нет ни одной категории</div>'
     : '<div class="chips">' + sorted.map(c=>`
@@ -586,8 +636,7 @@ function renderCategories(){
       `).join('') + '</div>';
   chipsEl.querySelectorAll('.chip-remove').forEach(el=>{
     el.addEventListener('click', ()=>{
-      settings.categories = settings.categories.filter(c=>c!==el.dataset.cat);
-      delete settings.categoryLimits[el.dataset.cat];
+      removeCategoryAt(el.dataset.cat, selectedMonth);
       if(selectedCategory===el.dataset.cat){ selectedCategory=''; updateCategoryLabel(); }
       saveSettings();
       renderCategories();
@@ -600,7 +649,7 @@ function renderCategories(){
 
 function renderCategoryPicker(){
   const panelChips = document.getElementById('category-picker-chips');
-  const sorted = [...settings.categories].sort((a,b)=>a.localeCompare(b,'ru'));
+  const sorted = activeCats(selectedMonth).sort((a,b)=>a.localeCompare(b,'ru'));
   panelChips.innerHTML = sorted.length===0
     ? '<div class="empty" style="padding:8px 0;">Сначала добавьте категорию выше</div>'
     : '<div class="chips">' + sorted.map(c=>`
@@ -624,12 +673,10 @@ function addCategory(){
   const input = document.getElementById('new-category-input');
   const name = input.value.trim();
   if(!name) return;
-  if(!settings.categories.some(c=>c.toLowerCase()===name.toLowerCase())){
-    settings.categories.push(name);
-    saveSettings();
-    renderCategories();
-    renderExpenses();
-  }
+  addCategoryAt(name, selectedMonth);
+  saveSettings();
+  renderCategories();
+  renderExpenses();
   input.value = '';
 }
 document.getElementById('categories-toggle').addEventListener('click', ()=>{
@@ -783,7 +830,7 @@ function renderExpenses(){
   }
 
   const listEl = document.getElementById('exp-list');
-  if(monthItems.length===0 && settings.categories.length===0){
+  if(monthItems.length===0 && activeCats(mk).length===0){
     listEl.innerHTML = '<div class="empty">Пока нет трат за этот месяц</div>';
     return;
   }
@@ -794,7 +841,7 @@ function renderExpenses(){
     if(!groups[key]) groups[key] = [];
     groups[key].push(x);
   });
-  settings.categories.forEach(c=>{ if(!groups[c]) groups[c] = []; });
+  activeCats(mk).forEach(c=>{ if(!groups[c]) groups[c] = []; });
   const categoryNames = Object.keys(groups).sort((a,b)=>a.localeCompare(b,'ru'));
 
   listEl.innerHTML = categoryNames.map(cat=>{
