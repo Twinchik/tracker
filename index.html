@@ -437,6 +437,7 @@ function effectiveCatLimit(cat, mk){
 function getCatLimits(mk){
   const result = {};
   Object.keys(settings.categoryLimits).forEach(cat=>{
+    if(!settings.categories.includes(cat)) return; // лимиты удалённых категорий не считаем
     const v = effectiveCatLimit(cat, mk);
     if(v!=null) result[cat] = v;
   });
@@ -586,6 +587,7 @@ function renderCategories(){
   chipsEl.querySelectorAll('.chip-remove').forEach(el=>{
     el.addEventListener('click', ()=>{
       settings.categories = settings.categories.filter(c=>c!==el.dataset.cat);
+      delete settings.categoryLimits[el.dataset.cat];
       if(selectedCategory===el.dataset.cat){ selectedCategory=''; updateCategoryLabel(); }
       saveSettings();
       renderCategories();
