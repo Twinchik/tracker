@@ -278,7 +278,11 @@ async function pullFromCloud(){
       await pushToCloud();
     }else if(rows && rows.length>0){
       expenses = rows[0].expenses || [];
+      const localPeriods = (settings && settings.categoryPeriods) || {};
       settings = rows[0].settings || settings;
+      // если в облаке настройки записала старая версия сайта (без месяцев категорий) — не теряем свои
+      if(!settings.categoryPeriods || typeof settings.categoryPeriods !== 'object') settings.categoryPeriods = {};
+      Object.keys(localPeriods).forEach(c=>{ if(!settings.categoryPeriods[c]) settings.categoryPeriods[c] = localPeriods[c]; });
       if(!settings.categoryLimits) settings.categoryLimits = {};
       if(!settings.categories) settings.categories = [];
       if(!settings.categoryPeriods || typeof settings.categoryPeriods !== 'object') settings.categoryPeriods = {};
