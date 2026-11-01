@@ -479,7 +479,7 @@ function effectiveCatLimit(cat, mk){
 function getCatLimits(mk){
   const result = {};
   Object.keys(settings.categoryLimits).forEach(cat=>{
-    if(!catActive(cat, mk)) return; // лимиты категорий, которых в этом месяце нет, не считаем
+    if(!settings.categories.includes(cat) || !catActive(cat, mk)) return; // лимиты категорий, которых нет (вообще или в этом месяце), не считаем
     const v = effectiveCatLimit(cat, mk);
     if(v!=null) result[cat] = v;
   });
@@ -601,6 +601,8 @@ async function loadData(){
         settings.categoryPeriods[c] = [{ from: first || '0000-01', to: null }];
       }
     });
+    // чистим лимиты категорий, которых уже нет в списке
+    Object.keys(settings.categoryLimits).forEach(c=>{ if(!settings.categories.includes(c)) delete settings.categoryLimits[c]; });
   }catch(err){ /* нет настроек */ }
   const initLimit = effectiveBudgetLimit(selectedMonth);
   if(initLimit) document.getElementById('exp-limit-input').value = initLimit;
