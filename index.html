@@ -101,6 +101,9 @@
   .edit-note{font-size:12px;color:var(--accent);margin-bottom:8px;display:none;}
   .edit-note.on{display:flex;justify-content:space-between;align-items:center;}
   .edit-cancel{cursor:pointer;text-decoration:underline;}
+  #loader{display:none;position:fixed;inset:0;align-items:center;justify-content:center;color:var(--muted);font-size:14px;background:var(--bg);z-index:100;}
+  body.loading #loader{display:flex;}
+  body.loading .wrap{visibility:hidden;}
   .modal{position:fixed;inset:0;background:rgba(20,20,18,0.45);display:none;align-items:flex-end;justify-content:center;z-index:50;padding:0;}
   .modal.open{display:flex;animation:fadeIn .15s ease;}
   .sheet{background:var(--card);width:100%;max-width:520px;border-radius:18px 18px 0 0;padding:20px 16px 24px;box-shadow:0 -8px 30px rgba(0,0,0,0.18);animation:slideUp .2s ease;max-height:92vh;overflow:auto;}
@@ -157,6 +160,8 @@
 </style>
 </head>
 <body>
+<script>try{if(localStorage.getItem('tracker_sync_code'))document.body.classList.add('loading');setTimeout(function(){document.body.classList.remove('loading');},10000);}catch(e){}</script>
+<div id="loader">Загружаю данные…</div>
 <div class="wrap">
   <h1>Мой трекер трат</h1>
 
@@ -306,12 +311,16 @@ function updateSyncStatus(text){
 async function pullFromCloud(){
   if(!syncCode) return false;
   try{
+    const ctrl = new AbortController();
+    const timer = setTimeout(()=>ctrl.abort(), 7000);
     const res = await fetch(SUPABASE_URL + '/rest/v1/tracker_sync?sync_code=eq.' + encodeURIComponent(syncCode) + '&select=*', {
+      signal: ctrl.signal,
       headers: {
         apikey: SUPABASE_ANON_KEY,
         Authorization: 'Bearer ' + SUPABASE_ANON_KEY
       }
     });
+    clearTimeout(timer);
     if(!res.ok) throw new Error('fetch failed: ' + res.status);
     const rows = await res.json();
     const cloudEmpty = rows && rows.length>0 && !(rows[0].expenses && rows[0].expenses.length);
@@ -330,6 +339,7 @@ async function pullFromCloud(){
       if(!settings.categoryPeriods || typeof settings.categoryPeriods !== 'object') settings.categoryPeriods = {};
       if(!settings.budgetLimit || typeof settings.budgetLimit !== 'object') settings.budgetLimit = {};
       if(!Array.isArray(settings.incomes)) settings.incomes = [];
+      cleanOrphanLimits();
       localStorage.setItem('tracker_expenses', JSON.stringify(expenses));
       localStorage.setItem('tracker_settings', JSON.stringify(settings));
     }else{
@@ -453,6 +463,9 @@ function catActive(cat, mk){
 }
 function activeCats(mk){
   return settings.categories.filter(c => catActive(c, mk));
+}
+function cleanOrphanLimits(){
+  Object.keys(settings.categoryLimits).forEach(c=>{ if(!settings.categories.includes(c)) delete settings.categoryLimits[c]; });
 }
 function addCategoryAt(name, mk){
   if(!settings.categoryPeriods) settings.categoryPeriods = {};
@@ -706,17 +719,17 @@ async function loadData(){
   }catch(err){ /* нет настроек */ }
   const initLimit = effectiveBudgetLimit(selectedMonth);
   if(initLimit) document.getElementById('exp-limit-input').value = initLimit;
-  renderCategories();
-  renderExpenses();
   if(syncCode){
+    // не показываем устаревшие локальные данные, пока не подтянули свежие из облака
     updateSyncStatus('Синхронизация с облаком…');
     const ok = await pullFromCloud();
     updateSyncStatus(ok ? ('Подключено. Код: ' + syncCode) : 'Не удалось подключиться, проверь интернет');
-    if(ok){
-      renderCategories();
-      renderExpenses();
-    }
+    const lim = effectiveBudgetLimit(selectedMonth);
+    if(lim) document.getElementById('exp-limit-input').value = lim;
   }
+  renderCategories();
+  renderExpenses();
+  document.body.classList.remove('loading');
 }
 
 function saveSettings(){
