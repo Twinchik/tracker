@@ -103,32 +103,40 @@
   .edit-cancel{cursor:pointer;text-decoration:underline;}
   #loader{display:none;position:fixed;inset:0;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:var(--text);font-size:16px;font-weight:500;background:var(--bg);z-index:100;}
   .wallet-anim{overflow:visible;}
-  .wl-body{transform-box:fill-box;transform-origin:50% 100%;animation:wlBounce 1.6s ease-in-out infinite;}
-  .wl-shadow{transform-box:fill-box;transform-origin:center;animation:wlShadow 1.6s ease-in-out infinite;}
+  .wl-body{transform-box:fill-box;transform-origin:50% 100%;animation:chCycle 2.8s infinite;}
   .b{transform-box:fill-box;transform-origin:50% 50%;opacity:0;}
-  .b-out{animation:billOut 2.4s ease-out infinite;}
-  .b-in{animation:billIn 2.4s ease-in infinite;}
-  .b1{animation-delay:0s;} .b2{animation-delay:1.2s;}
-  .b3{animation-delay:.6s;} .b4{animation-delay:1.8s;}
+  .b-out{animation:billOut 2.8s infinite;}
+  .b-in{animation:billIn 2.8s infinite;}
+  /* выстрел купюры — отдача: картхолдер резко сплющивается и отскакивает; когда купюра заходит обратно — он ненадолго раздувается */
+  @keyframes chCycle{
+    0%{transform:scale(1,1) rotate(0deg);animation-timing-function:ease-out;}
+    3%{transform:scale(1.07,.82) rotate(-3deg);animation-timing-function:ease-out;}
+    8%{transform:scale(.97,1.05) rotate(1.6deg);animation-timing-function:ease-in-out;}
+    13%{transform:scale(1,1) rotate(0deg);}
+    73%{transform:scale(1,1);animation-timing-function:cubic-bezier(.2,.9,.3,1.4);}
+    79%{transform:scale(1.18,1.18);animation-timing-function:ease-in-out;}
+    90%{transform:scale(.98,.98);}
+    96%,100%{transform:scale(1,1);}
+  }
   @keyframes billOut{
-    0%{opacity:0;transform:translateY(8px) rotate(0deg);}
-    10%{opacity:1;}
-    55%{opacity:1;transform:translateY(-58px) rotate(-9deg);}
-    100%{opacity:0;transform:translateY(-92px) rotate(14deg);}
+    0%{opacity:1;transform:translateY(24px) rotate(0deg);animation-timing-function:cubic-bezier(.1,.8,.2,1);}
+    14%{opacity:1;transform:translateY(-74px) rotate(-8deg);}
+    32%{opacity:1;transform:translateY(-92px) rotate(-13deg);}
+    46%{opacity:0;transform:translateY(-104px) rotate(-18deg);}
+    100%{opacity:0;transform:translateY(-104px) rotate(-18deg);}
   }
   @keyframes billIn{
-    0%{opacity:0;transform:translateY(-92px) rotate(12deg);}
-    20%{opacity:1;}
-    75%{opacity:1;transform:translateY(-14px) rotate(-4deg);}
-    100%{opacity:1;transform:translateY(16px) rotate(0deg);}
+    0%,48%{opacity:0;transform:translateY(-104px) rotate(16deg);}
+    54%{opacity:1;transform:translateY(-92px) rotate(13deg);animation-timing-function:ease-in;}
+    74%{opacity:1;transform:translateY(-10px) rotate(-3deg);}
+    78%{opacity:1;transform:translateY(24px) rotate(0deg);}
+    80%,100%{opacity:0;transform:translateY(24px) rotate(0deg);}
   }
-  @keyframes wlBounce{0%,100%{transform:scale(1,1);}50%{transform:scale(1.03,.97);}}
-  @keyframes wlShadow{0%,100%{transform:scaleX(1);opacity:.12;}50%{transform:scaleX(1.08);opacity:.16;}}
   .loader-text{letter-spacing:.2px;}
   .dots i{font-style:normal;animation:dotBlink 1.2s infinite;opacity:.2;}
   .dots i:nth-child(2){animation-delay:.2s;} .dots i:nth-child(3){animation-delay:.4s;}
   @keyframes dotBlink{0%,100%{opacity:.2;}40%{opacity:1;}}
-  @media (prefers-reduced-motion:reduce){.wl-body,.wl-shadow,.b-out,.b-in{animation:none;} .b1{opacity:1;transform:translateY(-30px);}}
+  @media (prefers-reduced-motion:reduce){.wl-body,.b-out,.b-in{animation:none;} .b-out{opacity:1;transform:translateY(-34px);}}
   body.loading #loader{display:flex;}
   body.loading .wrap{visibility:hidden;}
   .modal{position:fixed;inset:0;background:rgba(20,20,18,0.45);display:none;align-items:flex-end;justify-content:center;z-index:50;padding:0;}
@@ -191,8 +199,8 @@
 <div id="loader" role="status" aria-live="polite">
   <svg class="wallet-anim" viewBox="0 0 200 170" width="200" height="170" aria-hidden="true">
     <defs>
-      <linearGradient id="wl-back" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6b4423"/><stop offset="1" stop-color="#4a2e15"/></linearGradient>
-      <linearGradient id="wl-front" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#b5763a"/><stop offset="1" stop-color="#8a5526"/></linearGradient>
+      <linearGradient id="ch-back" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#23272e"/><stop offset="1" stop-color="#14171b"/></linearGradient>
+      <linearGradient id="ch-front" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3a404a"/><stop offset="1" stop-color="#262a31"/></linearGradient>
       <g id="bill">
         <rect x="0" y="0" width="72" height="36" rx="4" fill="#5fd38d" stroke="#1f7a46" stroke-width="2"/>
         <rect x="5" y="5" width="62" height="26" rx="2" fill="none" stroke="#1f7a46" stroke-width="1" opacity=".55"/>
@@ -200,19 +208,15 @@
         <text x="36" y="22.5" text-anchor="middle" font-size="12" font-weight="700" fill="#1f7a46" font-family="-apple-system,Segoe UI,Roboto,sans-serif">₽</text>
       </g>
     </defs>
-    <ellipse class="wl-shadow" cx="100" cy="158" rx="62" ry="7" fill="#000" opacity=".12"/>
     <g class="wl-body">
-      <rect x="30" y="66" width="140" height="84" rx="14" fill="url(#wl-back)"/>
-      <g class="bills">
-        <g class="b b-out b1"><use href="#bill" x="42" y="52"/></g>
-        <g class="b b-out b2"><use href="#bill" x="86" y="52"/></g>
-        <g class="b b-in b3"><use href="#bill" x="60" y="52"/></g>
-        <g class="b b-in b4"><use href="#bill" x="96" y="52"/></g>
-      </g>
-      <rect x="30" y="86" width="140" height="64" rx="14" fill="url(#wl-front)"/>
-      <path d="M44 93H156" stroke="#d9975a" stroke-width="2" stroke-dasharray="5 4" stroke-linecap="round" opacity=".7"/>
-      <rect x="138" y="106" width="32" height="26" rx="8" fill="#6b4423"/>
-      <circle cx="152" cy="119" r="6" fill="#f5c542" stroke="#c99a1d" stroke-width="1.5"/>
+      <rect x="40" y="66" width="120" height="88" rx="14" fill="url(#ch-back)"/>
+      <g class="b b-out"><use href="#bill" x="64" y="62"/></g>
+      <g class="b b-in"><use href="#bill" x="64" y="62"/></g>
+      <rect x="40" y="88" width="120" height="66" rx="14" fill="url(#ch-front)"/>
+      <path d="M40 102a14 14 0 0 1 14-14h92a14 14 0 0 1 14 14" fill="none" stroke="#f5c542" stroke-width="2.5" stroke-linecap="round" opacity=".9"/>
+      <path d="M54 142H146" stroke="#59616d" stroke-width="2" stroke-dasharray="5 4" stroke-linecap="round" opacity=".8"/>
+      <rect x="86" y="108" width="28" height="18" rx="4" fill="#f5c542" opacity=".95"/>
+      <circle cx="100" cy="117" r="3.4" fill="#262a31"/>
     </g>
   </svg>
   <div class="loader-text">Пересчитываю бабло<span class="dots"><i>.</i><i>.</i><i>.</i></span></div>
